@@ -1,4 +1,5 @@
 use chrono::prelude::*;
+use std::collections::HashMap;
 
 const BASEURL: &str = "https://www.boardgamegeek.com/xmlapi2/";
 
@@ -12,6 +13,20 @@ pub enum ThingType {
     RPGIssue
 }
 
+impl ThingType {
+    pub fn as_str(&self) -> &str {
+        match self {
+            &ThingType::Boardgame => "boardgame",
+            &ThingType::BoardgameAccessory => "boardgameaccessory",
+            &ThingType::BoardgameExpansion => "boardgameexpansion",
+            &ThingType::Videogame => "videogame",
+            &ThingType::RPGItem => "rpgitem",
+            &ThingType::RPGIssue => "rpgissue"
+        }
+    }
+}
+
+#[derive(Hash, Eq, PartialEq, Debug)]
 pub enum CollectionArgument {
     Ownership,
     Rated,
@@ -28,15 +43,23 @@ pub enum CollectionArgument {
     WantParts
 }
 
-impl ThingType {
+impl CollectionArgument {
     pub fn as_str(&self) -> &str {
         match self {
-            &ThingType::Boardgame => "boardgame",
-            &ThingType::BoardgameAccessory => "boardgameaccessory",
-            &ThingType::BoardgameExpansion => "boardgameexpansion",
-            &ThingType::Videogame => "videogame",
-            &ThingType::RPGItem => "rpgitem",
-            &ThingType::RPGIssue => "rpgissue"
+            &CollectionArgument::Ownership => "own",
+            &CollectionArgument::Rated => "rated",
+            &CollectionArgument::Played => "played",
+            &CollectionArgument::Commented => "comment",
+            &CollectionArgument::MarkedForTrade => "trade",
+            &CollectionArgument::WantedForTrade => "want",
+            &CollectionArgument::Wishlisted => "wishlist",
+            &CollectionArgument::Preordered => "preordered",
+            &CollectionArgument::WantToPlay => "wanttoplay",
+            &CollectionArgument::WantToBuy => "wanttobuy",
+            &CollectionArgument::PreviouslyOwned => "prevowned",
+            &CollectionArgument::HasParts => "hasparts",
+            &CollectionArgument::WantParts => "wantparts",
+
         }
     }
 }
@@ -155,20 +178,8 @@ pub struct Collection {
     id: Vec<usize>,
     brief: bool,
     stats: bool,
-    own: Option<bool>,
-    rated: Option<bool>,
-    played: Option<bool>,
-    comment: Option<bool>,
-    trade: Option<bool>,
-    want: Option<bool>,
-    wishlist: Option<bool>,
+    bool_args: HashMap<CollectionArgument, bool>,
     wishlistpriority: Option<usize>,
-    preordered: Option<bool>,
-    wanttoplay: Option<bool>,
-    wanttobuy: Option<bool>,
-    prevowned: Option<bool>,
-    hasparts: Option<bool>,
-    wantparts: Option<bool>,
     minrating: Option<usize>,
     rating: Option<usize>,
     minbggrating: Option<usize>,
@@ -190,20 +201,8 @@ impl Collection {
             id: Vec::new(),
             brief: true,
             stats: true,
-            own: None,
-            rated: None,
-            played: None,
-            comment: None,
-            trade: None,
-            want: None,
-            wishlist: None,
+            bool_args: HashMap::new(),
             wishlistpriority: None,
-            preordered: None,
-            wanttoplay: None,
-            wanttobuy: None,
-            prevowned: None,
-            hasparts: None,
-            wantparts: None,
             minrating: None,
             rating: None,
             minbggrating: None,
@@ -228,41 +227,13 @@ impl Collection {
     }
 
     pub fn set_filter<'a>(&'a mut self, arg: CollectionArgument, val: bool) -> &'a mut Collection {
-        match arg {
-            CollectionArgument::Ownership => { self.own = Some(val); }
-            CollectionArgument::Rated => { self.rated = Some(val); }
-            CollectionArgument::Played => { self.played = Some(val); }
-            CollectionArgument::Commented => { self.comment = Some(val); }
-            CollectionArgument::MarkedForTrade => { self.trade = Some(val); }
-            CollectionArgument::WantedForTrade => { self.want = Some(val); }
-            CollectionArgument::Wishlisted => { self.wishlist = Some(val); }
-            CollectionArgument::Preordered => { self.preordered = Some(val); }
-            CollectionArgument::WantToPlay => { self.wanttoplay = Some(val); }
-            CollectionArgument::WantToBuy => { self.wanttobuy = Some(val); }
-            CollectionArgument::PreviouslyOwned => { self.prevowned = Some(val); }
-            CollectionArgument::HasParts => { self.hasparts = Some(val); }
-            CollectionArgument::WantParts => { self.wantparts = Some(val); }
-        }
+        self.bool_args.insert(arg, val);
         self
     }
 
 
     pub fn unset_filter<'a>(&'a mut self, arg: CollectionArgument) -> &'a mut Collection {
-        match arg {
-            CollectionArgument::Ownership => { self.own = None; }
-            CollectionArgument::Rated => { self.rated = None; }
-            CollectionArgument::Played => { self.played = None; }
-            CollectionArgument::Commented => { self.comment = None; }
-            CollectionArgument::MarkedForTrade => { self.trade = None; }
-            CollectionArgument::WantedForTrade => { self.want = None; }
-            CollectionArgument::Wishlisted => { self.wishlist = None; }
-            CollectionArgument::Preordered => { self.preordered = None; }
-            CollectionArgument::WantToPlay => { self.wanttoplay = None; }
-            CollectionArgument::WantToBuy => { self.wanttobuy = None; }
-            CollectionArgument::PreviouslyOwned => { self.prevowned = None; }
-            CollectionArgument::HasParts => { self.hasparts = None; }
-            CollectionArgument::WantParts => { self.wantparts = None; }
-        }
+        self.bool_args.remove(&arg);
         self
     }
 
@@ -278,44 +249,8 @@ impl Collection {
             self.brief as usize,
             self.stats as usize
         );
-        if self.own.is_some() {
-            s.push_str(&format!("&own={}", self.own.unwrap() as usize));
-        }
-        if self.rated.is_some() {
-            s.push_str(&format!("&rated={}", self.rated.unwrap() as usize));
-        }
-        if self.played.is_some() {
-            s.push_str(&format!("&played={}", self.played.unwrap() as usize));
-        }
-        if self.comment.is_some() {
-            s.push_str(&format!("&comment={}", self.comment.unwrap() as usize));
-        }
-        if self.trade.is_some() {
-            s.push_str(&format!("&trade={}", self.trade.unwrap() as usize));
-        }
-        if self.want.is_some() {
-            s.push_str(&format!("&want={}", self.want.unwrap() as usize));
-        }
-        if self.wishlist.is_some() {
-            s.push_str(&format!("&wishlist={}", self.wishlist.unwrap() as usize));
-        }
-        if self.preordered.is_some() {
-            s.push_str(&format!("&preordered={}", self.preordered.unwrap() as usize));
-        }
-        if self.wanttoplay.is_some() {
-            s.push_str(&format!("&wanttoplay={}", self.wanttoplay.unwrap() as usize));
-        }
-        if self.wanttobuy.is_some() {
-            s.push_str(&format!("&wanttobuy={}", self.wanttobuy.unwrap() as usize));
-        }
-        if self.prevowned.is_some() {
-            s.push_str(&format!("&prevowned={}", self.prevowned.unwrap() as usize));
-        }
-        if self.hasparts.is_some() {
-            s.push_str(&format!("&hasparts={}", self.hasparts.unwrap() as usize));
-        }
-        if self.wantparts.is_some() {
-            s.push_str(&format!("&wantparts={}", self.wantparts.unwrap() as usize));
+        for (key, val) in &self.bool_args {
+            s.push_str(&format!("&{}={}", key.as_str(), *val as usize));
         }
         if self.modifiedsince.is_some() {
             s.push_str(&format!("&modifiedsince={}", self.modifiedsince.unwrap().format("%y-%m-%d").to_string()));
